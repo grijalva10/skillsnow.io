@@ -1,0 +1,60 @@
+<?php
+
+namespace App\Http\Middleware;
+
+use Closure;
+use Illuminate\Support\Facades\File;
+
+class SCLC
+{
+    /**
+     * Handle an incoming request.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  \Closure  $next
+     * @return mixed
+     */
+    public function handle($request, Closure $next)
+    {
+        // dd(filemtime(storage_path('framework/framework')));
+        $liFile = File::exists(storage_path('framework/framework'));
+        if ($liFile && $request->is('admin/*')) {
+            //get file content
+            $liFileCont = File::get(storage_path('framework/framework'));
+            //decrypt the file
+            $dec = $this->dec($liFileCont);
+            $dec = json_decode($dec);
+            if (!$dec || isset($dec->nvi)) {
+                dd('nulled');
+                // return redirect('admin/stores');
+            }
+            if (isset($dec->code) && $dec->host != $request->getHost()) {
+                dd('Host name mismatch NULLED');
+                // return redirect('admin/stores');
+            }
+        }
+        if (!$liFile && $request->is('admin/*')) {
+            //if file not present, create file with Nulled License Installed nvi = true (QkpOeitBeEQzbXNrWjlIeWhzNmZ5Zz09)
+            File::put(storage_path('framework/framework'), 'QkpOeitBeEQzbXNrWjlIeWhzNmZ5Zz09');
+            dd('License not found NULLED');
+            // return redirect('admin/stores');
+        }
+
+        return $next($request);
+    }
+
+    /**
+     * @param $data
+     * @return mixed
+     */
+    public function dec($data)
+    {
+        $enc = 'AES-256-CBC';
+        $sk = '1254874128001';
+        $s_iv = 'cd125d87e995d621';
+        $k = hash('sha256', $sk);
+        $iv = substr(hash('sha256', $s_iv), 0, 16);
+        $op = openssl_decrypt(base64_decode($data), $enc, $k, 0, $iv);
+        return $op;
+    }
+};
